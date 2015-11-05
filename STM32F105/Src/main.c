@@ -45,6 +45,7 @@
 CAN_HandleTypeDef hcan1;
 
 UART_HandleTypeDef huart1;
+DMA_HandleTypeDef hdma_usart1_tx;
 
 osThreadId defaultTaskHandle;
 osMessageQId uartTxQueueHandle;
@@ -67,6 +68,7 @@ static CanRxMsgTypeDef        can1RxMessage;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void const * argument);
@@ -103,6 +105,7 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_CAN1_Init();
   MX_USART1_UART_Init();
 
@@ -292,6 +295,20 @@ void MX_USART1_UART_Init(void)
 
 }
 
+/** 
+  * Enable DMA controller clock
+  */
+void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  HAL_NVIC_SetPriority(DMA1_Channel4_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel4_IRQn);
+
+}
+
 /** Configure pins as 
         * Analog 
         * Input 
@@ -343,7 +360,7 @@ void txUart() {
     if (event.status == osEventMessage) {
       char *str = event.value.p;
       int len = strlen(str);
-      HAL_StatusTypeDef result = HAL_UART_Transmit_IT(&huart1, (uint8_t*)str, len);
+      HAL_StatusTypeDef result = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)str, len);
       switch (result) {
         case HAL_OK: break;
         case HAL_ERROR:
@@ -359,6 +376,33 @@ void txUart() {
     }
   }
 }
+
+/*void txUart() {
+  HAL_UART_StateTypeDef state = HAL_UART_GetState(&huart1);
+
+  if (state == HAL_UART_STATE_BUSY_TX_RX || state == HAL_UART_STATE_BUSY_TX) {
+  } else {
+
+    osEvent event = osMessageGet(uartTxQueueHandle, osWaitForever);
+    if (event.status == osEventMessage) {
+      char *str = event.value.p;
+      int len = strlen(str);
+      HAL_StatusTypeDef result = HAL_UART_Transmit_IT(&huart1, (uint8_t*)str, len);
+      switch (result) {
+        case HAL_OK: break;
+        case HAL_ERROR:
+            throwError("HAL_UART_Transmit_IT: error");
+            break;
+        case HAL_BUSY:
+            //throwError("HAL_UART_Transmit_IT: busy");
+            break;
+        case HAL_TIMEOUT:
+            throwError("HAL_UART_Transmit_IT: timeout");
+            break;
+      }
+    }
+  }
+}*/
 
 void rxUart() {
   HAL_StatusTypeDef result = HAL_UART_Receive_IT(&huart1, &inCharacter, 1);
@@ -398,13 +442,15 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
 }
 
 void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-    transmitErrorMessage("UART error");
     uint32_t code = huart->ErrorCode;
-    if (code & HAL_UART_ERROR_PE) { transmitErrorMessage("Parity error"); }
-    if (code & HAL_UART_ERROR_NE) { transmitErrorMessage("Noise error"); }
-    if (code & HAL_UART_ERROR_FE) { transmitErrorMessage("frame error"); }
-    if (code & HAL_UART_ERROR_ORE) { transmitErrorMessage("Overrun error"); }
-    if (code & HAL_UART_ERROR_DMA) { transmitErrorMessage("DMA error"); }
+    if (code & HAL_UART_ERROR_PE) { throwError("UART error: Parity error"); }
+    if (code & HAL_UART_ERROR_NE) { throwError("UART error: Noise error"); }
+    if (code & HAL_UART_ERROR_FE) { throwError("UART error: frame error"); }
+    if (code & HAL_UART_ERROR_ORE) { throwError("UART error: Overrun error"); }
+    if (code & HAL_UART_ERROR_DMA) { throwError("UART error: DMA error"); }
+    char str[80];
+    sprintf(str, "Uart error code: %X", code);
+    throwError(str);
 }
 
 void HAL_CAN_TxCpltCallback(CAN_HandleTypeDef* hcan) {
@@ -520,7 +566,7 @@ void transmitErrorMessage(char *message) {
 void StartDefaultTask(void const * argument)
 {
   /* init code for USB_DEVICE */
-  MX_USB_DEVICE_Init();
+  //MX_USB_DEVICE_Init();
 
   /* USER CODE BEGIN 5 */
     //transmitErrorMessage("StartDefaultTask");

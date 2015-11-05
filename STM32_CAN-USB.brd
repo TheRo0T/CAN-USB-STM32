@@ -2349,7 +2349,7 @@ design rules under a new name.</description>
 <wire x1="36.5" y1="55.15" x2="42.35" y2="54.65" width="0.8128" layer="1"/>
 <wire x1="42.35" y1="54.65" x2="39.5" y2="44.5" width="0.8128" layer="1"/>
 </signal>
-<signal name="N$4">
+<signal name="TJA_RXD">
 <contactref element="IC2" pad="3"/>
 <contactref element="IC1" pad="61"/>
 <wire x1="27.75" y1="25.75" x2="27.75" y2="27.25" width="0.254" layer="1"/>
@@ -2478,21 +2478,21 @@ design rules under a new name.</description>
 <signal name="BAT">
 <contactref element="R4" pad="2"/>
 </signal>
-<signal name="N$14">
+<signal name="TJA_EN">
 <contactref element="IC2" pad="6"/>
 <wire x1="32.4" y1="29.4" x2="32.4" y2="28.15" width="0.254" layer="1"/>
 <contactref element="IC1" pad="55"/>
 <wire x1="30.75" y1="25.75" x2="30.75" y2="26.5" width="0.254" layer="1"/>
 <wire x1="30.75" y1="26.5" x2="32.4" y2="28.15" width="0.254" layer="1"/>
 </signal>
-<signal name="N$6">
+<signal name="TJA_STB">
 <contactref element="IC2" pad="5"/>
 <wire x1="31.13" y1="29.4" x2="31.13" y2="27.88" width="0.254" layer="1"/>
 <contactref element="IC1" pad="56"/>
 <wire x1="30.25" y1="25.75" x2="30.25" y2="27" width="0.254" layer="1"/>
 <wire x1="30.25" y1="27" x2="31.13" y2="27.88" width="0.254" layer="1"/>
 </signal>
-<signal name="N$15">
+<signal name="TJA_ERR">
 <contactref element="IC2" pad="4"/>
 <contactref element="IC1" pad="57"/>
 <contactref element="R6" pad="1"/>
@@ -2505,7 +2505,7 @@ design rules under a new name.</description>
 <wire x1="29.75" y1="25.75" x2="29.75" y2="28.25" width="0.254" layer="1"/>
 <wire x1="29.86" y1="28.36" x2="29.75" y2="28.25" width="0.254" layer="1"/>
 </signal>
-<signal name="N$5">
+<signal name="TJA_TXD">
 <contactref element="IC1" pad="62"/>
 <contactref element="IC2" pad="2"/>
 <wire x1="27.32" y1="29.4" x2="27.32" y2="28.32" width="0.254" layer="1"/>

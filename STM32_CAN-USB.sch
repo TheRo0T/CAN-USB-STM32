@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="7.2.0">
+<eagle version="7.1.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -16856,7 +16856,7 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <label x="-71.12" y="35.56" size="1.778" layer="95" rot="R90" xref="yes"/>
 </segment>
 </net>
-<net name="N$4" class="0">
+<net name="TJA_RXD" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="RXD"/>
 <pinref part="IC1" gate="MCU" pin="PB8"/>
@@ -16993,7 +16993,7 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <label x="157.48" y="99.06" size="1.778" layer="95" rot="R90" xref="yes"/>
 </segment>
 </net>
-<net name="N$14" class="0">
+<net name="TJA_EN" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="EN"/>
 <wire x1="124.46" y1="58.42" x2="104.14" y2="58.42" width="0.1524" layer="91"/>
@@ -17002,7 +17002,7 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <wire x1="88.9" y1="83.82" x2="104.14" y2="83.82" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$6" class="0">
+<net name="TJA_STB" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="STB"/>
 <wire x1="124.46" y1="60.96" x2="101.6" y2="60.96" width="0.1524" layer="91"/>
@@ -17011,7 +17011,7 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <wire x1="88.9" y1="81.28" x2="101.6" y2="81.28" width="0.1524" layer="91"/>
 </segment>
 </net>
-<net name="N$15" class="0">
+<net name="TJA_ERR" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="ERR"/>
 <wire x1="124.46" y1="63.5" x2="111.76" y2="63.5" width="0.1524" layer="91"/>
@@ -17024,7 +17024,7 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <junction x="111.76" y="63.5"/>
 </segment>
 </net>
-<net name="N$5" class="0">
+<net name="TJA_TXD" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="TXD"/>
 <pinref part="IC1" gate="MCU" pin="PB9"/>

@@ -96,7 +96,6 @@ void StartDefaultTask(void const * argument);
 void throwError(char *msg);
 
 void txUart();
-void rxUart();
 void txCan();
 void rxCan();
 void transmitErrorMessage(char *message);
@@ -687,7 +686,7 @@ void StartDefaultTask(void const * argument)
             CanRxMsgTypeDef *msg = canEvent.value.p;
 
             char *str = malloc(22);
-            sprintf(str, "t%03X%01X", msg->StdId, msg->DLC);
+            sprintf(str, "t%03X%01X", (unsigned int)msg->StdId, (unsigned int)msg->DLC);
             int i;
             for (i=0; i<8; i++) {
                 sprintf(str + 5 + i*2, "%02X ", msg->Data[i]);

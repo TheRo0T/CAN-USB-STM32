@@ -54,10 +54,11 @@ osMessageQId uartRxQueueHandle;
 osMessageQId canRxQueueHandle;
 osMessageQId canTxQueueHandle;
 
+CanHacker_HandleTypeDef hcanhacker;
+
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
 #define UART_RX_LINE_BUFFER 80
-uint8_t inCharacter;
 int timer = 0;
 uint8_t uartLine[UART_RX_LINE_BUFFER];
 int uartLineIndex = 0;
@@ -127,6 +128,8 @@ int main(void)
   MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
+    CanHacker_Init(&hcanhacker);
+
     hcan1.pTxMsg = &can1TxMessage;
     hcan1.pRxMsg = &can1RxMessage;
 
@@ -196,36 +199,10 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-//  HAL_StatusTypeDef result;
   while (1)
   {
 
-
       osDelay(1000);
-
-      /*result = HAL_CAN_Receive(&hcan1, CAN_FIFO0, HAL_MAX_DELAY);
-      switch (result) {
-          case HAL_OK:
-              printf("Success");
-              break;
-          case HAL_ERROR:
-              Error_Handler_Period(500);
-              break;
-          case HAL_BUSY:
-              Error_Handler_Period(1000);
-              break;
-          case HAL_TIMEOUT:
-              Error_Handler_Period(250);
-              break;
-      }*/
-
-
-          /*result = HAL_UART_Transmit_IT(&huart1, (uint8_t *)"Z", 1);
-          printf("%d", result);
-          HAL_Delay(100);
-          result = HAL_UART_Transmit(&huart1, (uint8_t *)"z", 1, 1000);
-          printf("%d", result);
-          HAL_Delay(100);*/
 
   /* USER CODE END WHILE */
 
@@ -490,13 +467,13 @@ void rxCan() {
     switch (result) {
         case HAL_OK: break;
         case HAL_ERROR:
-            throwError("RXCAN error");
+            throwError("HAL_CAN_Receive_IT: error");
             break;
         case HAL_BUSY:
-            throwError("RXCAN busy");
+            throwError("HAL_CAN_Receive_IT: busy");
             break;
         case HAL_TIMEOUT:
-            throwError("RXCAN timeout");
+            throwError("HAL_CAN_Receive_IT: timeout");
             break;
     }
     switch (hcan1.ErrorCode) {
@@ -529,13 +506,13 @@ void txCan() {
             switch (result) {
                 case HAL_OK: break;
                 case HAL_ERROR:
-                    throwError("TXCAN error");
+                    throwError("HAL_CAN_Transmit_IT: error");
                     break;
                 case HAL_BUSY:
-                    throwError("TXCAN busy");
+                    throwError("HAL_CAN_Transmit_IT: busy");
                     break;
                 case HAL_TIMEOUT:
-                    throwError("TXCAN timeout");
+                    throwError("HAL_CAN_Transmit_IT: timeout");
                     break;
             }
             switch (hcan1.ErrorCode) {
@@ -605,17 +582,20 @@ void processUartDmaBuffer(UART_HandleTypeDef *huart, UART_DMA_RX_Buffer *uartRxB
                 case '\n':
                     if (uartLineIndex > 0) {
                         uartLine[uartLineIndex++] = '\0';
-                        char *str = malloc(uartLineIndex);
-                        memcpy(str, uartLine, uartLineIndex);
+                        /*uint8_t *str = malloc(uartLineIndex);
+                        memcpy(str, uartLine, uartLineIndex);*/
+
+                        CanHacker_Receive_Cmd(&hcanhacker, uartLine);
+
                         uartLineIndex = 0;
-                        osStatus status = osMessagePut(uartRxQueueHandle, (uint32_t)str, osWaitForever);
+                        /*osStatus status = osMessagePut(uartRxQueueHandle, (uint32_t)str, osWaitForever);
                         switch (status) {
                             case osOK:
                                 break;
                             default:
                                 throwError("Error put to queue");
                                 break;
-                        }
+                        }*/
                     }
                     break;
                 default:
@@ -635,6 +615,29 @@ void processUartDmaBuffer(UART_HandleTypeDef *huart, UART_DMA_RX_Buffer *uartRxB
         gotoNextBufferToRead();
     }
 }
+
+void CanHacker_ErrorCallback(CanHacker_HandleTypeDef *canhacker, char *message) {
+    throwError(message);
+}
+
+void CanHacker_CanTxMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, CanTxMsgTypeDef *txMsg) {
+    CanTxMsgTypeDef *txMsgQ = malloc(sizeof(CanTxMsgTypeDef));
+    memcpy(txMsgQ, txMsg, sizeof(CanTxMsgTypeDef));
+
+    osMessagePut (canTxQueueHandle, (uint32_t)txMsgQ, osWaitForever);
+    txCan();
+
+    return;
+}
+
+void CanHacker_UartMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, uint8_t *line) {
+    int len = strlen((char *)line);
+    char *str = malloc(len+1);
+    memcpy(str, line, len+1);
+    osMessagePut (uartTxQueueHandle, (uint32_t)str, osWaitForever);
+    txUart();
+}
+
 /* USER CODE END 4 */
 
 /* StartDefaultTask function */
@@ -655,49 +658,23 @@ void StartDefaultTask(void const * argument)
     {
         processUartDmaBuffer(&huart1, &uartRxBuffer[currentUartRxBufferToRead]);
 
-
-        //int speed = timer > 0 ? i * 8 / timer : 0;
-        //sprintf(formated, "%04X %05.1f %04X\r\n", i, speed, timer);
-        //sprintf(formated, "%06d\r\n", speed);
-
-        /*UBaseType_t availableRx = uxQueueSpacesAvailable(uartRxQueueHandle);
-        UBaseType_t availableTx = uxQueueSpacesAvailable(uartTxQueueHandle);
-        sprintf(formated, "%06d %06d\r\n", availableRx, availableTx);
-        osMessagePut (uartTxQueueHandle, (uint32_t)formated, osWaitForever);
-
-        //osMessagePut (uartTxQueueHandle, (uint32_t)str[i%3], osWaitForever);
-        txUart();
-        i++;
-
-        osDelay(1000);*/
-
-        osEvent uartEvent = osMessageGet(uartRxQueueHandle, 10); // osWaitForever
+        /*osEvent uartEvent = osMessageGet(uartRxQueueHandle, 10); // osWaitForever
         if (uartEvent.status == osEventMessage) {
 
-            exec_usb_cmd(uartEvent.value.p, uartTxQueueHandle, canTxQueueHandle);
+            CanHacker_Receive_Cmd(uartEvent.value.p, uartTxQueueHandle, canTxQueueHandle);
             free(uartEvent.value.p);
 
             //osMessagePut (uartTxQueueHandle, (uint32_t)event.value.p, osWaitForever);
             //txUart();
-        }
+        }*/
 
         osEvent canEvent = osMessageGet(canRxQueueHandle, 10); // osWaitForever
         if (canEvent.status == osEventMessage) {
-            CanRxMsgTypeDef *msg = canEvent.value.p;
 
-            char *str = malloc(22);
-            sprintf(str, "t%03X%01X", (unsigned int)msg->StdId, (unsigned int)msg->DLC);
-            int i;
-            for (i=0; i<8; i++) {
-                sprintf(str + 5 + i*2, "%02X ", msg->Data[i]);
-            }
-            str[20] = CANHACKER_CR;
-            str[21] = '\0';
-
+            CanHacker_Receive_CanMsg(&hcanhacker, (CanRxMsgTypeDef *)canEvent.value.p);
             free(canEvent.value.p);
 
-            osMessagePut (uartTxQueueHandle, (uint32_t)str, osWaitForever);
-            txUart();
+
         }
         osDelay(1);
     }

@@ -2,21 +2,58 @@
 #include "stm32f1xx_hal.h"
 #include <string.h>
 #include <ctype.h>
-#include <stdlib.h>
-#include "cmsis_os.h"
+#include "utils.h"
 
-extern void txUart();
-extern void txCan();
+void CanHacker_Init(CanHacker_HandleTypeDef *canhacker) {
+    canhacker->timestamp = CANHACKER_TIMESTAMP_DISABLED;
+}
 
-void transmit_CAN(osMessageQId canTxQueueHandle, CanTxMsgTypeDef *txMsg);
-uint8_t ascii2byte (uint8_t val);
-void transmit_UART(osMessageQId uartTxQueueHandle, uint8_t *txLine);
-void transmit_error(osMessageQId uartTxQueueHandle);
-extern void transmitErrorMessage(char *message);
-uint8_t nibble2ascii(uint8_t byte);
-void debugPrint(osMessageQId uartTxQueueHandle, uint8_t *txLine);
+__weak void CanHacker_ErrorCallback(CanHacker_HandleTypeDef *canhacker, char *message) {
 
-void execTransmit11bit(osMessageQId uartTxQueueHandle, osMessageQId canTxQueueHandle, uint8_t *str) {
+}
+
+__weak void CanHacker_CanTxMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, CanTxMsgTypeDef *txMsg) {
+
+}
+
+__weak void CanHacker_UartMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, uint8_t *line) {
+
+}
+
+void CanHacker_ExecGetSWVersion(CanHacker_HandleTypeDef *canhacker) {
+    uint8_t str[7];
+    str[0] = CANHACKER_GET_SW_VERSION;
+    str[1] = nibble2ascii(CANHACKER_SW_VER_MAJOR >> 4);
+    str[2] = nibble2ascii(CANHACKER_SW_VER_MAJOR);
+    str[3] = nibble2ascii(CANHACKER_SW_VER_MINOR >> 4);
+    str[4] = nibble2ascii(CANHACKER_SW_VER_MINOR);
+    str[5] = CANHACKER_CR;
+    str[6] = '\0';
+    CanHacker_UartMsgReadyCallback(canhacker, str);
+}
+
+void CanHacker_ExecGetVersion(CanHacker_HandleTypeDef *canhacker) {
+    uint8_t str[7];
+    str[0] = CANHACKER_GET_VERSION;
+    str[1] = nibble2ascii(CANHACKER_HW_VER >> 4);
+    str[2] = nibble2ascii(CANHACKER_HW_VER);
+    str[3] = nibble2ascii(CANHACKER_SW_VER >> 4);
+    str[4] = nibble2ascii(CANHACKER_SW_VER);
+    str[5] = CANHACKER_CR;
+    str[6] = '\0';
+    CanHacker_UartMsgReadyCallback(canhacker, str);
+}
+
+void CanHacker_ExecGetSerial(CanHacker_HandleTypeDef *canhacker) {
+    uint8_t str[7];
+    str[0] = CANHACKER_GET_SERIAL;
+    memcpy(str+1, CANHACKER_SERIAL, strlen(CANHACKER_SERIAL));
+    str[5] = CANHACKER_CR;
+    str[6] = '\0';
+    CanHacker_UartMsgReadyCallback(canhacker, str);
+}
+
+void CanHacker_ExecTransmit11bit(CanHacker_HandleTypeDef *canhacker, uint8_t *str) {
 
     const int idOffset = 1;
     const int dataOffset = 5;
@@ -26,7 +63,7 @@ void execTransmit11bit(osMessageQId uartTxQueueHandle, osMessageQId canTxQueueHa
     uint8_t cmd_len = strlen((char *)str); // get command length
 
     if ((cmd_len < 5) || (cmd_len > 21)) {   // check valid cmd length
-        transmitErrorMessage("Error: unexpected command length");
+        CanHacker_ErrorCallback(canhacker, "Error: unexpected command length");
         return;
     }
 
@@ -35,7 +72,7 @@ void execTransmit11bit(osMessageQId uartTxQueueHandle, osMessageQId canTxQueueHa
     // check if all chars are valid hex chars
     while (*cmd_buf_pntr2) {
         if (!isxdigit (*cmd_buf_pntr2)) {
-            transmitErrorMessage("Error: unexpected command data character");
+            CanHacker_ErrorCallback(canhacker, "Error: unexpected command data character");
             return;
         }
         ++cmd_buf_pntr2;
@@ -55,13 +92,13 @@ void execTransmit11bit(osMessageQId uartTxQueueHandle, osMessageQId canTxQueueHa
     if (CAN_tx_msg.DLC != ((cmd_len - 5) / 2)) {
         char message[80];
         sprintf(message, "Invalid DLC: %d and %d", (int)CAN_tx_msg.DLC, (int)((cmd_len - 5) / 2));
-        transmitErrorMessage(message);
+        CanHacker_ErrorCallback(canhacker, message);
         return;
     }
 
     // check for valid length
     if (CAN_tx_msg.DLC > 8) {
-        transmitErrorMessage("DLC > 8");
+        CanHacker_ErrorCallback(canhacker, "DLC > 8");
         return;
     }
 
@@ -70,122 +107,70 @@ void execTransmit11bit(osMessageQId uartTxQueueHandle, osMessageQId canTxQueueHa
         CAN_tx_msg.Data[i] = (ascii2byte(str[dataOffset+i*2]) << 4) + ascii2byte(str[dataOffset+i*2+1]);
     }
 
-    // if transmit buffer was empty send message
-    transmit_CAN(canTxQueueHandle, &CAN_tx_msg);
+    CanHacker_CanTxMsgReadyCallback(canhacker, &CAN_tx_msg);
 }
 
-void exec_usb_cmd (uint8_t *cmd_buf, osMessageQId uartTxQueueHandle, osMessageQId canTxQueueHandle)
+void CanHacker_Receive_Cmd(CanHacker_HandleTypeDef *canhacker, uint8_t *cmd_buf)
 {
-    //debugPrint(uartTxQueueHandle, cmd_buf);
-
     char firstChar = *cmd_buf;
 
     switch (firstChar) {
         // get serial number
-        case GET_SERIAL: {
-            uint8_t str[7];
-            str[0] = GET_SERIAL;
-            memcpy(str+1, SERIAL, strlen(SERIAL));
-            str[5] = CANHACKER_CR;
-            str[6] = '\0';
-            transmit_UART(uartTxQueueHandle, str);
+        case CANHACKER_GET_SERIAL: {
+            CanHacker_ExecGetSerial(canhacker);
             return;
         }
 
         // get hard- and software version
-        case GET_VERSION: {
-            uint8_t str[7];
-            str[0] = GET_VERSION;
-            str[1] = nibble2ascii(HW_VER >> 4);
-            str[2] = nibble2ascii(HW_VER);
-            str[3] = nibble2ascii(SW_VER >> 4);
-            str[4] = nibble2ascii(SW_VER);
-            str[5] = CANHACKER_CR;
-            str[6] = '\0';
-            transmit_UART(uartTxQueueHandle, str);
+        case CANHACKER_GET_VERSION: {
+            CanHacker_ExecGetVersion(canhacker);
             return;
         }
 
         // get only software version
-        case GET_SW_VERSION: {
-            uint8_t str[7];
-            str[0] = GET_SW_VERSION;
-            str[1] = nibble2ascii(SW_VER_MAJOR >> 4);
-            str[2] = nibble2ascii(SW_VER_MAJOR);
-            str[3] = nibble2ascii(SW_VER_MINOR >> 4);
-            str[4] = nibble2ascii(SW_VER_MINOR);
-            str[5] = CANHACKER_CR;
-            str[6] = '\0';
-            transmit_UART(uartTxQueueHandle, str);
+        case CANHACKER_GET_SW_VERSION: {
+            CanHacker_ExecGetSWVersion(canhacker);
             return;
         }
 
-        case SEND_11BIT_ID:
-            execTransmit11bit(uartTxQueueHandle, canTxQueueHandle, cmd_buf);
+        case CANHACKER_SEND_11BIT_ID:
+            CanHacker_ExecTransmit11bit(canhacker, cmd_buf);
             return;
 
             // end with error on unknown commands
         default:
-            return transmit_error(uartTxQueueHandle);
-    }               // end switch
-
-    // we should never reach this return
-    return transmit_error(uartTxQueueHandle);
-}
-
-void transmit_error(osMessageQId uartTxQueueHandle) {
-    uint8_t str[2] = {CANHACKER_ERROR, '\0'};
-    transmit_UART(uartTxQueueHandle, str);
-}
-
-void debugPrint(osMessageQId uartTxQueueHandle, uint8_t *txLine)
-{
-    int len = strlen((char *)txLine);
-    char *str = malloc(len + 3);
-    memcpy(str, txLine, len + 3);
-    str[len] = '\r';
-    str[len+1] = '\n';
-    str[len+2] = 0;
-    osMessagePut (uartTxQueueHandle, (uint32_t)str, osWaitForever);
-    txUart();
-
-    return;
-}
-
-void transmit_UART(osMessageQId uartTxQueueHandle, uint8_t *txLine)
-{
-    int len = strlen((char *)txLine);
-    char *str = malloc(len+1);
-    memcpy(str, txLine, len+1);
-    osMessagePut (uartTxQueueHandle, (uint32_t)str, osWaitForever);
-    txUart();
-
-    return;
-}
-
-void transmit_CAN(osMessageQId canTxQueueHandle, CanTxMsgTypeDef *txMsg)
-{
-    CanTxMsgTypeDef *txMsgQ = malloc(sizeof(CanTxMsgTypeDef));
-    memcpy(txMsgQ, txMsg, sizeof(CanTxMsgTypeDef));
-
-    osMessagePut (canTxQueueHandle, (uint32_t)txMsgQ, osWaitForever);
-    txCan();
-
-    return;
-}
-
-uint8_t ascii2byte(uint8_t val)
-{
-    if (val >= 'a') {
-        return val - 'a' + 10; // convert chars a-f
+            CanHacker_ErrorCallback(canhacker, "Unexpected command");
+            return;
     }
-    if (val >= 'A') {
-        return val - 'A' + 10; // convert chars A-F
-    }
-    return val - '0';     // convert chars 0-9
+
+    return CanHacker_ErrorCallback(canhacker, "Should never reach this section");
 }
 
-uint8_t nibble2ascii(uint8_t byte) {
-    byte &= 0x0F;
-    return byte < 10 ? byte + 48 : byte + 55;
+
+
+void CanHacker_CanRxMsgToString(CanRxMsgTypeDef *msg, uint8_t *str) {
+    str[0] = CANHACKER_SEND_11BIT_ID;
+    int i;
+    uint32_t id = msg->StdId;
+    for(i=3; i>=1; i--) {
+        str[i] = nibble2ascii(id);
+        id >>= 4;
+    }
+    str[4] = nibble2ascii(msg->DLC);
+
+    for (i=0; i<msg->DLC; i++) {
+        uint8_t byte = msg->Data[i];
+        str[5+i*2] = nibble2ascii(byte >> 4);
+        str[5+i*2+1] = nibble2ascii(byte);
+    }
+    int length = 5 + msg->DLC * 2;
+    str[length] = CANHACKER_CR;
+    str[length+1] = '\0';
+}
+
+void CanHacker_Receive_CanMsg(CanHacker_HandleTypeDef *canhacker, CanRxMsgTypeDef *msg) {
+
+    uint8_t str[CANHACKER_CMD_MAX_LENGTH];
+    CanHacker_CanRxMsgToString(msg, str);
+    CanHacker_UartMsgReadyCallback(canhacker, str);
 }

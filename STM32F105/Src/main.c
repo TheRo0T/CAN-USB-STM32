@@ -44,6 +44,8 @@
 /* Private variables ---------------------------------------------------------*/
 CAN_HandleTypeDef hcan1;
 
+TIM_HandleTypeDef htim6;
+
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart1_rx;
@@ -53,8 +55,6 @@ osMessageQId uartTxQueueHandle;
 osMessageQId uartRxQueueHandle;
 osMessageQId canRxQueueHandle;
 osMessageQId canTxQueueHandle;
-
-CanHacker_HandleTypeDef hcanhacker;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -66,6 +66,8 @@ int uartLineIndex = 0;
 
 static CanTxMsgTypeDef        can1TxMessage;
 static CanRxMsgTypeDef        can1RxMessage;
+
+CanHacker_HandleTypeDef hcanhacker;
 
 typedef struct
 {
@@ -89,6 +91,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_DMA_Init(void);
 static void MX_CAN1_Init(void);
+static void MX_TIM6_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void const * argument);
 
@@ -125,6 +128,7 @@ int main(void)
   MX_GPIO_Init();
   MX_DMA_Init();
   MX_CAN1_Init();
+  MX_TIM6_Init();
   MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
@@ -235,7 +239,7 @@ void SystemClock_Config(void)
   RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_SYSCLK|RCC_CLOCKTYPE_PCLK1;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
   RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
   HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2);
 
@@ -270,6 +274,24 @@ void MX_CAN1_Init(void)
   hcan1.Init.RFLM = DISABLE;
   hcan1.Init.TXFP = DISABLE;
   HAL_CAN_Init(&hcan1);
+
+}
+
+/* TIM6 init function */
+void MX_TIM6_Init(void)
+{
+
+  TIM_MasterConfigTypeDef sMasterConfig;
+
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 35999;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 60000;
+  HAL_TIM_Base_Init(&htim6);
+
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig);
 
 }
 
@@ -636,6 +658,18 @@ void CanHacker_UartMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, uint8_t 
     memcpy(str, line, len+1);
     osMessagePut (uartTxQueueHandle, (uint32_t)str, osWaitForever);
     txUart();
+}
+
+uint32_t CanHacker_GetTimestampCallback(CanHacker_HandleTypeDef *canhacker) {
+    return htim6.Instance->CNT;
+}
+
+void CanHacker_StartTimerCallback(CanHacker_HandleTypeDef *canhacker) {
+    HAL_TIM_Base_Start(&htim6);
+}
+
+void CanHacker_StopTimerCallback(CanHacker_HandleTypeDef *canhacker) {
+    HAL_TIM_Base_Stop(&htim6);
 }
 
 /* USER CODE END 4 */

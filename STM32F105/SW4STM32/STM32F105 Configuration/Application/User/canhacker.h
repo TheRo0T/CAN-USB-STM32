@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include "stm32f1xx_hal.h"
 
-#define CANHACKER_CMD_MAX_LENGTH 22
+#define CANHACKER_CMD_MAX_LENGTH 26
 
 #define CANHACKER_HW_VER        0x10      // hardware version
 #define CANHACKER_SW_VER        0x10      // software version
@@ -54,5 +54,8 @@ void CanHacker_Receive_CanMsg(CanHacker_HandleTypeDef *canhacker, CanRxMsgTypeDe
 void CanHacker_ErrorCallback(CanHacker_HandleTypeDef *canhacker, char *message);
 void CanHacker_CanTxMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, CanTxMsgTypeDef *txMsg);
 void CanHacker_UartMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, uint8_t *line);
+uint32_t CanHacker_GetTimestampCallback(CanHacker_HandleTypeDef *canhacker);
+void CanHacker_StartTimerCallback(CanHacker_HandleTypeDef *canhacker);
+void CanHacker_StopTimerCallback(CanHacker_HandleTypeDef *canhacker);
 
 #endif

@@ -20,6 +20,16 @@ __weak void CanHacker_UartMsgReadyCallback(CanHacker_HandleTypeDef *canhacker, u
 
 }
 
+__weak uint32_t CanHacker_GetTimestampCallback(CanHacker_HandleTypeDef *canhacker) {
+    return 0;
+}
+
+__weak void CanHacker_StartTimerCallback(CanHacker_HandleTypeDef *canhacker) {
+}
+
+__weak void CanHacker_StopTimerCallback(CanHacker_HandleTypeDef *canhacker) {
+}
+
 void CanHacker_ExecGetSWVersion(CanHacker_HandleTypeDef *canhacker) {
     uint8_t str[7];
     str[0] = CANHACKER_GET_SW_VERSION;
@@ -150,6 +160,40 @@ void CanHacker_ExecTransmit11bit(CanHacker_HandleTypeDef *canhacker, uint8_t *st
     CanHacker_CanTxMsgReadyCallback(canhacker, &CAN_tx_msg);
 }
 
+void CanHacker_ExecTimestamp(CanHacker_HandleTypeDef *canhacker) {
+    switch (canhacker->timestamp) {
+        case CANHACKER_TIMESTAMP_DISABLED:
+            canhacker->timestamp = CANHACKER_TIMESTAMP_ENABLED;
+            break;
+        case CANHACKER_TIMESTAMP_ENABLED:
+            canhacker->timestamp = CANHACKER_TIMESTAMP_DISABLED;
+            break;
+    }
+
+}
+
+void CanHacker_ExecOpen(CanHacker_HandleTypeDef *canhacker) {
+    if (canhacker->timestamp == CANHACKER_TIMESTAMP_ENABLED) {
+        CanHacker_StartTimerCallback(canhacker);
+    }
+}
+
+void CanHacker_ExecClose(CanHacker_HandleTypeDef *canhacker) {
+    if (canhacker->timestamp == CANHACKER_TIMESTAMP_ENABLED) {
+        CanHacker_StopTimerCallback(canhacker);
+    }
+}
+
+void CanHacker_ExecSetBitrate(CanHacker_HandleTypeDef *canhacker, uint8_t *str) {
+    if (strlen((char *)str) != 2) {
+        CanHacker_ErrorCallback(canhacker, "Length of SetBitrate command must be 2");
+    }
+
+    if (str[1] != '4') {
+        CanHacker_ErrorCallback(canhacker, "Only S4 (125kbps) is upported");
+    }
+}
+
 void CanHacker_Receive_Cmd(CanHacker_HandleTypeDef *canhacker, uint8_t *cmd_buf)
 {
     char firstChar = *cmd_buf;
@@ -181,6 +225,22 @@ void CanHacker_Receive_Cmd(CanHacker_HandleTypeDef *canhacker, uint8_t *cmd_buf)
             CanHacker_ExecTransmitR11bit(canhacker, cmd_buf);
             return;
 
+        case CANHACKER_TIME_STAMP:
+            CanHacker_ExecTimestamp(canhacker);
+            return;
+
+        case CANHACKER_OPEN_CAN_CHAN:
+            CanHacker_ExecOpen(canhacker);
+            return;
+
+        case CANHACKER_CLOSE_CAN_CHAN:
+            CanHacker_ExecClose(canhacker);
+            return;
+
+        case CANHACKER_SET_BITRATE:
+            CanHacker_ExecSetBitrate(canhacker, cmd_buf);
+            return;
+
             // end with error on unknown commands
         default:
             CanHacker_ErrorCallback(canhacker, "Unexpected command");
@@ -192,7 +252,7 @@ void CanHacker_Receive_Cmd(CanHacker_HandleTypeDef *canhacker, uint8_t *cmd_buf)
 
 
 
-void CanHacker_CanRxMsgToString(CanRxMsgTypeDef *msg, uint8_t *str) {
+void CanHacker_CanRxMsgToString(CanHacker_HandleTypeDef *canhacker, CanRxMsgTypeDef *msg, uint8_t *str) {
     if (msg->RTR == CAN_RTR_DATA) {
         str[0] = CANHACKER_SEND_11BIT_ID;
     } else {
@@ -215,6 +275,14 @@ void CanHacker_CanRxMsgToString(CanRxMsgTypeDef *msg, uint8_t *str) {
         }
         length += msg->DLC * 2;
     }
+    if (canhacker->timestamp) {
+        uint32_t timestamp = CanHacker_GetTimestampCallback(canhacker);
+        for(i=3; i>=0; i--) {
+            str[length + i] = nibble2ascii(timestamp);
+            timestamp >>= 4;
+        }
+        length += 4;
+    }
     str[length] = CANHACKER_CR;
     str[length+1] = '\0';
 }
@@ -222,6 +290,6 @@ void CanHacker_CanRxMsgToString(CanRxMsgTypeDef *msg, uint8_t *str) {
 void CanHacker_Receive_CanMsg(CanHacker_HandleTypeDef *canhacker, CanRxMsgTypeDef *msg) {
 
     uint8_t str[CANHACKER_CMD_MAX_LENGTH];
-    CanHacker_CanRxMsgToString(msg, str);
+    CanHacker_CanRxMsgToString(canhacker, msg, str);
     CanHacker_UartMsgReadyCallback(canhacker, str);
 }

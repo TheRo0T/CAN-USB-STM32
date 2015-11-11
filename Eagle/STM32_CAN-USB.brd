@@ -73,6 +73,10 @@
 <text x="16.75" y="6.25" size="1" layer="25" font="vector" align="center">GND</text>
 <text x="19.5" y="6.25" size="1" layer="25" font="vector" align="center">DIO</text>
 <text x="22" y="6.25" size="1" layer="25" font="vector" align="center">RST</text>
+<text x="54.75" y="48.75" size="1" layer="25" font="vector" rot="R90" align="center">GND</text>
+<text x="54.75" y="46.25" size="1" layer="25" font="vector" rot="R90" align="center">L</text>
+<text x="54.75" y="43.75" size="1" layer="25" font="vector" rot="R90" align="center">H</text>
+<text x="54.75" y="41.25" size="1" layer="25" font="vector" rot="R90" align="center">BAT</text>
 </plain>
 <libraries>
 <library name="crystal">
@@ -2114,15 +2118,15 @@ design rules under a new name.</description>
 <attribute name="VALUE" x="44.21" y="25.27" size="1.27" layer="27" rot="R270"/>
 </element>
 <element name="C22" library="rcl" package="C0805" value="1nF" x="48" y="42" smashed="yes" rot="R90">
-<attribute name="NAME" x="55.23" y="38.98" size="0.6096" layer="25" rot="R90"/>
+<attribute name="NAME" x="48.23" y="43.98" size="0.6096" layer="25" rot="R90"/>
 <attribute name="VALUE" x="50.54" y="40.73" size="1.27" layer="27" rot="R90"/>
 </element>
 <element name="C23" library="rcl" package="C0805" value="0.1" x="45.25" y="42" smashed="yes" rot="R90">
-<attribute name="NAME" x="54.23" y="38.98" size="0.6096" layer="25" rot="R90"/>
+<attribute name="NAME" x="46.73" y="43.48" size="0.6096" layer="25" rot="R90"/>
 <attribute name="VALUE" x="47.79" y="40.73" size="1.27" layer="27" rot="R90"/>
 </element>
 <element name="C24" library="rcl" package="C0805" value="4.7uF" x="42.5" y="42" smashed="yes" rot="R90">
-<attribute name="NAME" x="49.73" y="39.23" size="0.6096" layer="25" rot="R90"/>
+<attribute name="NAME" x="43.98" y="38.98" size="0.6096" layer="25" rot="R90"/>
 <attribute name="VALUE" x="45.04" y="40.73" size="1.27" layer="27" rot="R90"/>
 </element>
 <element name="SWD" library="pinhead" package="1X06" value="" x="18" y="8.5" smashed="yes">

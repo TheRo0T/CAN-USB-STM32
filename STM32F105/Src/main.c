@@ -39,6 +39,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "canhacker.h"
+#include "tja1055.h"
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -67,6 +68,7 @@ int uartLineIndex = 0;
 static CanTxMsgTypeDef        can1TxMessage;
 static CanRxMsgTypeDef        can1RxMessage;
 
+TJA1055_HandleTypeDef tja1055;
 CanHacker_HandleTypeDef hcanhacker;
 
 typedef struct
@@ -132,6 +134,8 @@ int main(void)
   MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
+    TJA1055_Init(&tja1055);
+
     CanHacker_Init(&hcanhacker);
 
     hcan1.pTxMsg = &can1TxMessage;

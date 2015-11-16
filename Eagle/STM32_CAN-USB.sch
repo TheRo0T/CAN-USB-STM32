@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="7.4.0">
+<eagle version="7.2.0">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -15313,6 +15313,10 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <part name="SWD" library="pinhead" deviceset="PINHD-1X4" device=""/>
 <part name="GND18" library="supply1" deviceset="GND" device=""/>
 <part name="GPIO" library="pinhead" deviceset="PINHD-1X4" device=""/>
+<part name="R11" library="rcl" deviceset="R-EU_" device="R0805" value="47K"/>
+<part name="R12" library="rcl" deviceset="R-EU_" device="R0805" value="47K"/>
+<part name="GND19" library="supply1" deviceset="GND" device=""/>
+<part name="GND20" library="supply1" deviceset="GND" device=""/>
 </parts>
 <sheets>
 <sheet>
@@ -15433,6 +15437,10 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <instance part="SWD" gate="A" x="-83.82" y="73.66"/>
 <instance part="GND18" gate="1" x="-40.64" y="-45.72"/>
 <instance part="GPIO" gate="A" x="2.54" y="-33.02"/>
+<instance part="R11" gate="G$1" x="111.76" y="50.8" rot="R90"/>
+<instance part="R12" gate="G$1" x="116.84" y="43.18" rot="R90"/>
+<instance part="GND19" gate="1" x="111.76" y="38.1"/>
+<instance part="GND20" gate="1" x="116.84" y="30.48"/>
 </instances>
 <busses>
 </busses>
@@ -15654,6 +15662,16 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <wire x1="-40.64" y1="-43.18" x2="-40.64" y2="-27.94" width="0.1524" layer="91"/>
 <pinref part="GPIO" gate="A" pin="1"/>
 <wire x1="0" y1="-27.94" x2="-40.64" y2="-27.94" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="R11" gate="G$1" pin="1"/>
+<pinref part="GND19" gate="1" pin="GND"/>
+<wire x1="111.76" y1="45.72" x2="111.76" y2="40.64" width="0.1524" layer="91"/>
+</segment>
+<segment>
+<pinref part="R12" gate="G$1" pin="1"/>
+<pinref part="GND20" gate="1" pin="GND"/>
+<wire x1="116.84" y1="38.1" x2="116.84" y2="33.02" width="0.1524" layer="91"/>
 </segment>
 </net>
 <net name="+3V3" class="0">
@@ -15894,19 +15912,27 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <net name="N$14" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="EN"/>
-<wire x1="124.46" y1="58.42" x2="104.14" y2="58.42" width="0.1524" layer="91"/>
+<wire x1="124.46" y1="58.42" x2="116.84" y2="58.42" width="0.1524" layer="91"/>
+<wire x1="116.84" y1="58.42" x2="104.14" y2="58.42" width="0.1524" layer="91"/>
 <wire x1="104.14" y1="58.42" x2="104.14" y2="83.82" width="0.1524" layer="91"/>
 <pinref part="IC1" gate="MCU" pin="PB3"/>
 <wire x1="88.9" y1="83.82" x2="104.14" y2="83.82" width="0.1524" layer="91"/>
+<pinref part="R12" gate="G$1" pin="2"/>
+<wire x1="116.84" y1="48.26" x2="116.84" y2="58.42" width="0.1524" layer="91"/>
+<junction x="116.84" y="58.42"/>
 </segment>
 </net>
 <net name="N$6" class="0">
 <segment>
 <pinref part="IC2" gate="G$1" pin="STB"/>
-<wire x1="124.46" y1="60.96" x2="101.6" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="124.46" y1="60.96" x2="111.76" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="111.76" y1="60.96" x2="101.6" y2="60.96" width="0.1524" layer="91"/>
 <wire x1="101.6" y1="60.96" x2="101.6" y2="81.28" width="0.1524" layer="91"/>
 <pinref part="IC1" gate="MCU" pin="PB4"/>
 <wire x1="88.9" y1="81.28" x2="101.6" y2="81.28" width="0.1524" layer="91"/>
+<pinref part="R11" gate="G$1" pin="2"/>
+<wire x1="111.76" y1="55.88" x2="111.76" y2="60.96" width="0.1524" layer="91"/>
+<junction x="111.76" y="60.96"/>
 </segment>
 </net>
 <net name="N$15" class="0">
@@ -16156,8 +16182,8 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <net name="PC9" class="0">
 <segment>
 <pinref part="IC1" gate="MCU" pin="PC9"/>
-<wire x1="88.9" y1="45.72" x2="109.22" y2="45.72" width="0.1524" layer="91"/>
-<label x="109.22" y="45.72" size="1.778" layer="95" xref="yes"/>
+<wire x1="88.9" y1="45.72" x2="96.52" y2="45.72" width="0.1524" layer="91"/>
+<label x="96.52" y="45.72" size="1.778" layer="95" xref="yes"/>
 </segment>
 <segment>
 <wire x1="0" y1="-33.02" x2="-27.94" y2="-33.02" width="0.1524" layer="91"/>
@@ -16168,10 +16194,10 @@ Source: http://www.hirose.co.jp/cataloge_hp/e24000019.pdf</description>
 <net name="PB12" class="0">
 <segment>
 <pinref part="IC1" gate="MCU" pin="PB12"/>
-<wire x1="88.9" y1="60.96" x2="96.52" y2="60.96" width="0.1524" layer="91"/>
-<wire x1="96.52" y1="60.96" x2="96.52" y2="53.34" width="0.1524" layer="91"/>
-<wire x1="96.52" y1="53.34" x2="106.68" y2="53.34" width="0.1524" layer="91"/>
-<label x="106.68" y="53.34" size="1.778" layer="95" xref="yes"/>
+<wire x1="88.9" y1="60.96" x2="93.98" y2="60.96" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="60.96" x2="93.98" y2="53.34" width="0.1524" layer="91"/>
+<wire x1="93.98" y1="53.34" x2="96.52" y2="53.34" width="0.1524" layer="91"/>
+<label x="96.52" y="53.34" size="1.778" layer="95" xref="yes"/>
 </segment>
 <segment>
 <wire x1="0" y1="-30.48" x2="-15.24" y2="-30.48" width="0.1524" layer="91"/>

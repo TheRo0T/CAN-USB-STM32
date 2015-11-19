@@ -52,8 +52,8 @@ DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart1_rx;
 
 osThreadId defaultTaskHandle;
+osThreadId uartRxDmaTaskHandle;
 osMessageQId uartTxQueueHandle;
-osMessageQId uartRxQueueHandle;
 osMessageQId canRxQueueHandle;
 osMessageQId canTxQueueHandle;
 
@@ -63,8 +63,9 @@ osMessageQId canTxQueueHandle;
 int timer = 0;
 uint8_t uartLine[UART_RX_LINE_BUFFER];
 int uartLineIndex = 0;
-#define UART_RX_BUFFER 512
+#define UART_RX_BUFFER 256
 
+CAN_HandleTypeDef hcan1;
 static CanTxMsgTypeDef        can1TxMessage;
 static CanRxMsgTypeDef        can1RxMessage;
 
@@ -79,7 +80,9 @@ typedef struct
     int offset;
 } UART_DMA_RX_Buffer;
 
-UART_DMA_RX_Buffer uartRxBuffer[2]= {
+#define UART_RX_BUFFERS_COUNT 2
+
+UART_DMA_RX_Buffer uartRxBuffer[UART_RX_BUFFERS_COUNT]= {
     { .readed = 1, .filled = 0, .offset = 0 },
     { .readed = 1, .filled = 0, .offset = 0 }
 };
@@ -96,6 +99,7 @@ static void MX_CAN1_Init(void);
 static void MX_TIM6_Init(void);
 static void MX_USART1_UART_Init(void);
 void StartDefaultTask(void const * argument);
+void StartUartRxDmaTask(void const * argument);
 
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
@@ -134,6 +138,13 @@ int main(void)
   MX_USART1_UART_Init();
 
   /* USER CODE BEGIN 2 */
+
+    tja1055.enPort = GPIOB;
+    tja1055.enPin = TJA_EN_Pin;
+    tja1055.errPort = GPIOB;
+    tja1055.errPin = TJA_ERR_Pin;
+    tja1055.stbPort = GPIOB;
+    tja1055.stbPin = TJA_STB_Pin;
     TJA1055_Init(&tja1055);
 
     CanHacker_Init(&hcanhacker);
@@ -174,6 +185,10 @@ int main(void)
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
+  /* definition and creation of uartRxDmaTask */
+  osThreadDef(uartRxDmaTask, StartUartRxDmaTask, osPriorityIdle, 0, 128);
+  uartRxDmaTaskHandle = osThreadCreate(osThread(uartRxDmaTask), NULL);
+
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
   /* USER CODE END RTOS_THREADS */
@@ -182,10 +197,6 @@ int main(void)
   /* definition and creation of uartTxQueue */
   osMessageQDef(uartTxQueue, 16, int);
   uartTxQueueHandle = osMessageCreate(osMessageQ(uartTxQueue), NULL);
-
-  /* definition and creation of uartRxQueue */
-  osMessageQDef(uartRxQueue, 16, int);
-  uartRxQueueHandle = osMessageCreate(osMessageQ(uartRxQueue), NULL);
 
   /* definition and creation of canRxQueue */
   osMessageQDef(canRxQueue, 16, int);
@@ -363,6 +374,38 @@ void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/*void MX_CAN1_Init(void)
+{
+
+    hcan1.Instance = CAN1;
+    hcan1.Init.Prescaler = 6;
+    hcan1.Init.Mode = CAN_MODE_SILENT_LOOPBACK;
+    hcan1.Init.SJW = CAN_SJW_1TQ;
+    hcan1.Init.BS1 = CAN_BS1_6TQ;
+    hcan1.Init.BS2 = CAN_BS2_5TQ;
+    hcan1.Init.TTCM = DISABLE;
+    hcan1.Init.ABOM = DISABLE;
+    hcan1.Init.AWUM = DISABLE;
+    hcan1.Init.NART = DISABLE;
+    hcan1.Init.RFLM = DISABLE;
+    hcan1.Init.TXFP = DISABLE;
+    HAL_StatusTypeDef canInitResult = HAL_CAN_Init(&hcan1);
+
+
+
+    switch (canInitResult) {
+        case HAL_OK: break;
+        case HAL_ERROR:
+            throwError("MX_CAN1_Init: error");
+            break;
+        case HAL_BUSY:
+            throwError("MX_CAN1_Init: busy");
+            break;
+        case HAL_TIMEOUT:
+            throwError("MX_CAN1_Init: timeout");
+            break;
+    }
+}*/
 
 void throwError(char *msg)
 {
@@ -373,58 +416,35 @@ void throwError(char *msg)
 }
 
 void txUart() {
-  HAL_UART_StateTypeDef state = HAL_UART_GetState(&huart1);
+    HAL_UART_StateTypeDef state = HAL_UART_GetState(&huart1);
 
-  if (state == HAL_UART_STATE_BUSY_TX_RX || state == HAL_UART_STATE_BUSY_TX) {
-  } else {
+    if (state == HAL_UART_STATE_BUSY_TX_RX || state == HAL_UART_STATE_BUSY_TX) {
+    } else {
 
-    osEvent event = osMessageGet(uartTxQueueHandle, osWaitForever);
-    if (event.status == osEventMessage) {
-      char *str = event.value.p;
-      int len = strlen(str);
-      HAL_StatusTypeDef result = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)str, len);
-      switch (result) {
-        case HAL_OK: break;
-        case HAL_ERROR:
-            throwError("HAL_UART_Transmit_IT: error");
-            break;
-        case HAL_BUSY:
-            //throwError("HAL_UART_Transmit_IT: busy");
-            break;
-        case HAL_TIMEOUT:
-            throwError("HAL_UART_Transmit_IT: timeout");
-            break;
-      }
+        osEvent event = osMessageGet(uartTxQueueHandle, osWaitForever);
+        if (event.status == osEventMessage) {
+            char *str = event.value.p;
+            int len = strlen(str);
+            if (len > 0) {
+                HAL_StatusTypeDef result = HAL_UART_Transmit_DMA(&huart1, (uint8_t*)str, len);
+                switch (result) {
+                    case HAL_OK: break;
+                    case HAL_ERROR:
+                        throwError("HAL_UART_Transmit_IT: error");
+                        break;
+                    case HAL_BUSY:
+                        throwError("HAL_UART_Transmit_IT: busy");
+                        break;
+                    case HAL_TIMEOUT:
+                        throwError("HAL_UART_Transmit_IT: timeout");
+                        break;
+                }
+            } else {
+                free(str);
+            }
+        }
     }
-  }
 }
-
-/*void txUart() {
-  HAL_UART_StateTypeDef state = HAL_UART_GetState(&huart1);
-
-  if (state == HAL_UART_STATE_BUSY_TX_RX || state == HAL_UART_STATE_BUSY_TX) {
-  } else {
-
-    osEvent event = osMessageGet(uartTxQueueHandle, osWaitForever);
-    if (event.status == osEventMessage) {
-      char *str = event.value.p;
-      int len = strlen(str);
-      HAL_StatusTypeDef result = HAL_UART_Transmit_IT(&huart1, (uint8_t*)str, len);
-      switch (result) {
-        case HAL_OK: break;
-        case HAL_ERROR:
-            throwError("HAL_UART_Transmit_IT: error");
-            break;
-        case HAL_BUSY:
-            //throwError("HAL_UART_Transmit_IT: busy");
-            break;
-        case HAL_TIMEOUT:
-            throwError("HAL_UART_Transmit_IT: timeout");
-            break;
-      }
-    }
-  }
-}*/
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->pTxBuffPtr) {
@@ -449,7 +469,8 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart) {
     if (huart->Instance == USART1) {
         // switch buffer
         uartRxBuffer[currentUartRxBuffer].filled = 1;
-        currentUartRxBuffer = currentUartRxBuffer == 0 ? 1 : 0;
+        currentUartRxBuffer++;
+        currentUartRxBuffer %= UART_RX_BUFFERS_COUNT;
         if (!uartRxBuffer[currentUartRxBuffer].readed) {
             throwError("UART RX OVERRUN");
         }
@@ -519,9 +540,7 @@ void rxCan() {
 }
 
 void txCan() {
-    HAL_CAN_StateTypeDef state = HAL_CAN_GetState(&hcan1);
-
-    if (state == HAL_CAN_STATE_READY || state == HAL_CAN_STATE_BUSY_RX) {
+    if (hcan1.State == HAL_CAN_STATE_READY && hcan1.txState == HAL_CAN_RXTX_STATE_READY) {
 
         osEvent event = osMessageGet(canTxQueueHandle, osWaitForever);
         if (event.status == osEventMessage) {
@@ -557,9 +576,8 @@ void txCan() {
             }
         }
     } else {
-        printf("State is %d\n", state);
-        transmitErrorMessage("State");
-        //Error_Handler_Period(500);
+        //printf("State is %d\n", hcan1.State);
+        //throwError("State");
     }
 }
 
@@ -581,13 +599,15 @@ void transmitErrorMessage(char *message) {
 void gotoNextBufferToRead() {
     if (currentUartRxBufferToRead != currentUartRxBuffer) {
         currentUartRxBufferToRead++;
-        currentUartRxBufferToRead %= 2;
+        currentUartRxBufferToRead %= UART_RX_BUFFERS_COUNT;
     }
 }
 
-void processUartDmaBuffer(UART_HandleTypeDef *huart, UART_DMA_RX_Buffer *uartRxBuffer) {
+int processUartDmaBuffer(UART_HandleTypeDef *huart, UART_DMA_RX_Buffer *uartRxBuffer) {
+    int itemsProcessed = 0;
+
     if (uartRxBuffer->readed) {
-        return;
+        return itemsProcessed;
     }
 
     int dmaOffset;
@@ -631,6 +651,8 @@ void processUartDmaBuffer(UART_HandleTypeDef *huart, UART_DMA_RX_Buffer *uartRxB
 
             uartRxBuffer->offset++;
         }
+
+        itemsProcessed++;
     }
 
     if (uartRxBuffer->offset >= UART_RX_BUFFER) {
@@ -640,6 +662,8 @@ void processUartDmaBuffer(UART_HandleTypeDef *huart, UART_DMA_RX_Buffer *uartRxB
 
         gotoNextBufferToRead();
     }
+
+    return itemsProcessed;
 }
 
 void CanHacker_ErrorCallback(CanHacker_HandleTypeDef *canhacker, char *message) {
@@ -687,36 +711,44 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN 5 */
     rxCan();
 
-    currentUartRxBuffer = 0;
-    currentUartRxBufferToRead = 0;
-    startUartDmaReceive(&huart1, &uartRxBuffer[currentUartRxBuffer]);
-
     /* Infinite loop */
     for(;;)
     {
-        processUartDmaBuffer(&huart1, &uartRxBuffer[currentUartRxBufferToRead]);
+        int itemsProcessed = 0;
 
-        /*osEvent uartEvent = osMessageGet(uartRxQueueHandle, 10); // osWaitForever
-        if (uartEvent.status == osEventMessage) {
-
-            CanHacker_Receive_Cmd(uartEvent.value.p, uartTxQueueHandle, canTxQueueHandle);
-            free(uartEvent.value.p);
-
-            //osMessagePut (uartTxQueueHandle, (uint32_t)event.value.p, osWaitForever);
-            //txUart();
-        }*/
-
-        osEvent canEvent = osMessageGet(canRxQueueHandle, 10); // osWaitForever
+        osEvent canEvent = osMessageGet(canRxQueueHandle, osWaitForever);
         if (canEvent.status == osEventMessage) {
 
             CanHacker_Receive_CanMsg(&hcanhacker, (CanRxMsgTypeDef *)canEvent.value.p);
             free(canEvent.value.p);
 
-
+            itemsProcessed++;
         }
-        osDelay(1);
+
+        // sleep only when nothing to do
+        if (!itemsProcessed) {
+            osDelay(1);
+        }
     }
   /* USER CODE END 5 */ 
+}
+
+/* StartUartRxDmaTask function */
+void StartUartRxDmaTask(void const * argument)
+{
+  /* USER CODE BEGIN StartUartRxDmaTask */
+
+    currentUartRxBuffer = 0;
+    currentUartRxBufferToRead = 0;
+    startUartDmaReceive(&huart1, &uartRxBuffer[currentUartRxBuffer]);
+
+    for(;;) {
+        int itemsProcessed = processUartDmaBuffer(&huart1, &uartRxBuffer[currentUartRxBufferToRead]);
+        if (!itemsProcessed) {
+            osDelay(1);
+        }
+    }
+  /* USER CODE END StartUartRxDmaTask */
 }
 
 #ifdef USE_FULL_ASSERT
@@ -733,6 +765,7 @@ void assert_failed(uint8_t* file, uint32_t line)
   /* USER CODE BEGIN 6 */
   /* User can add his own implementation to report the file name and line number,
     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+    printf("Wrong parameters value: file %s on line %d\r\n", (char *)file, (int *)line);
   /* USER CODE END 6 */
 
 }

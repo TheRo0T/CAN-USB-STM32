@@ -69,13 +69,19 @@ typedef enum
   HAL_CAN_STATE_RESET             = 0x00,  /*!< CAN not yet initialized or disabled */
   HAL_CAN_STATE_READY             = 0x01,  /*!< CAN initialized and ready for use   */  
   HAL_CAN_STATE_BUSY              = 0x02,  /*!< CAN process is ongoing              */     
-  HAL_CAN_STATE_BUSY_TX           = 0x12,  /*!< CAN process is ongoing              */   
-  HAL_CAN_STATE_BUSY_RX           = 0x22,  /*!< CAN process is ongoing              */ 
-  HAL_CAN_STATE_BUSY_TX_RX        = 0x32,  /*!< CAN process is ongoing              */
   HAL_CAN_STATE_TIMEOUT           = 0x03,  /*!< CAN in Timeout state                */
   HAL_CAN_STATE_ERROR             = 0x04   /*!< CAN error state                     */  
 
 }HAL_CAN_StateTypeDef;
+
+typedef enum
+{
+  HAL_CAN_RXTX_STATE_RESET             = 0x00,  /*!< CAN not yet initialized or disabled */
+  HAL_CAN_RXTX_STATE_READY             = 0x01,  /*!< CAN initialized and ready for use   */
+  HAL_CAN_RXTX_STATE_BUSY              = 0x02,  /*!< CAN process is ongoing              */
+  HAL_CAN_RXTX_STATE_ERROR             = 0x04   /*!< CAN error state                     */
+
+}HAL_CAN_RxTx_StateTypeDef;
 
 
 /** 
@@ -192,6 +198,10 @@ typedef struct
   
   __IO HAL_CAN_StateTypeDef   State;      /*!< CAN communication state        */
   
+  __IO HAL_CAN_RxTx_StateTypeDef   rxState;      /*!< CAN communication state        */
+
+  __IO HAL_CAN_RxTx_StateTypeDef   txState;      /*!< CAN communication state        */
+
   __IO uint32_t               ErrorCode;  /*!< CAN Error code                 */
   
 }CAN_HandleTypeDef;
